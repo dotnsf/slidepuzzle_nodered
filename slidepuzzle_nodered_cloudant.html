@@ -1,0 +1,218 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+	<head>
+		<meta charset="UTF-8"/>
+		<title>スライドパズル</title>
+		<script type="text/javascript" src="https://code.jquery.com/jquery-2.2.4.min.js"></script>
+		<link href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" rel="stylesheet"/>
+		<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"></script>
+		<link href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" rel="stylesheet"/>
+		<link rel="stylesheet" type="text/css" href="https://dotnsf-html.au-syd.mybluemix.net/jquery.jqpuzzle.css"/>
+		<script type="text/javascript" src="https://dotnsf-html.au-syd.mybluemix.net/jquery.jqpuzzle.min.js"></script>
+		<meta name="viewport" content="width=device-width,initial-scale=1"/>
+
+		<meta name="viewport" content="width=device-width,initial-scale=1"/>
+		<meta name="apple-mobile-web-app-capable" content="yes"/>
+		<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+		<meta name="apple-mobile-web-app-title" content="スライドパズル"/>
+
+	<script>
+		$(function(){
+			  var imagefile = document.getElementById( 'imagefile' );
+			  imagefile.addEventListener( 'change', selectReadFile, false );
+		});
+
+function selectReadFile( e ){
+	  var file = e.target.files;
+	  var reader = new FileReader();
+	  reader.onload = function(){
+		      readDrawImg( reader, 0, 0 );
+		    };
+	  reader.readAsDataURL( file[0] );
+}
+
+function readDrawImg( reader, x, y ){
+	  var img = readImg( reader );
+	  img.onload = function(){
+		      var w = img.width;
+		      var h = img.height;
+		      $('#slidegame_img').prop( 'src', img.src );
+		      $('#slidegame_img').prop( 'width', '600' );
+		      //h = parseInt( 600 * h / w );
+		      //$('#slidegame_img').prop( 'height', '' + h );
+
+		      var t = $('img.jqPuzzle');
+		      t.jqPuzzle( slide_settings, slide_texts );
+		    };
+}
+
+function readImg( reader ){
+	  var result_dataURL = reader.result;
+	  var img = new Image();
+	  img.src = result_dataURL;
+
+	  return img;
+}
+
+function postScore( results ){
+    results.moves = parseInt( results.moves );
+    results.seconds = parseInt( results.seconds );
+    results.timestamp = ( new Date() ).getTime();
+    $.ajax({
+       type: 'POST',
+       url: '/score',
+       data: results,
+       success: function( mydata ){
+           mydata.moves = parseInt( mydata.moves );
+           mydata.seconds = parseInt( mydata.seconds );
+           $.ajax({
+               type: 'GET',
+               url: '/scores',
+               success: function( body ){
+                   //alert( JSON.stringify( body ) );
+                   var alldata = [];
+                   body.forEach( function( data ){
+                      data.moves = parseInt( data.moves );
+                      data.seconds = parseInt( data.seconds );
+                      data.datetime = timestamp2datetime( data.timestamp );
+                      alldata.push( data );
+                   });
+                   alldata.sort( sortBySeconds );
+                   
+                   var ranking = '';
+                   for( var i = 0; i < alldata.length && i < 5; i ++ ){
+                       var d = alldata[i];
+                       var line = '[' + ( i + 1 ) + ']: ' + d.seconds + ' sec.(' + d.moves + ' steps) : ' + d.datetime;
+                       if( mydata.moves == d.moves && mydata.seconds == d.seconds ){
+                           line += ' <-- *';
+                       }
+                       line += "\n";
+                       ranking += line;
+                   }
+                   alert( ranking );
+               },
+               error: function(){
+                   alert( '1 移動回数: ' + results.moves + '回, かかった時間: ' + results.seconds + '秒' );
+               }
+           })
+       },
+       error: function(){
+           alert( '移動回数: ' + results.moves + '回, かかった時間: ' + results.seconds + '秒' );
+       }
+    });
+}
+
+function timestamp2datetime( ts ){
+    var dt = new Date();
+    
+    //var tz = dt.getTimezoneOffset() / 60;
+    //ts += ( tz + 9 ) * 60 * 60 * 1000;
+
+    dt.setTime( ts );
+    var y = dt.getFullYear();
+    var m = dt.getMonth() + 1;
+    var d = dt.getDate();
+    var h = dt.getHours();
+    var n = dt.getMinutes();
+    var s = dt.getSeconds();
+    
+    var s = y
+      + '/' + ( m < 10 ? '0' : '' ) + m
+      + '/' + ( d < 10 ? '0' : '' ) + d
+      + ' ' + ( h < 10 ? '0' : '' ) + h
+      + ':' + ( n < 10 ? '0' : '' ) + n
+      + ':' + ( s < 10 ? '0' : '' ) + s;
+    return s;
+}
+
+function sortBySeconds( a, b ){
+  var r = 0;
+  if( a.seconds < b.seconds ){ r = -1; }
+  else if( a.seconds > b.seconds ){ r = 1; }
+
+  return r;
+}
+	</script>
+<style type="text/css">
+html, body{
+	  text-align: center;
+		    background-color: #fafafa;
+			      font-size: 20px;
+				        color: #333;
+}
+label > input{
+	  display:none;
+}
+label{
+	  color: #aaa;
+		    background-color: #006dd9;
+			      padding: 10px;
+				        border: double 4px #aaa;
+}
+#slidegame_img{
+	  max-width: 100%;
+		    height: auto;
+}
+</style>
+	</head>
+	<body>
+
+		<div class="container center-block text-center">
+			  <label for="imagefile">
+				      <i class="fas fa-camera"></i>
+				          <input type="file" id="imagefile"/>
+					    </label>
+					      <br/>
+					        <img id="slidegame_img" class="jqPuzzle" />
+		</div>
+
+	<script>
+		//. jquery puzzle
+		var slide_settings = {
+			  rows: 4,
+			  cols: 4,
+			  hole: 16,
+			  shuffle: true,
+			  numbers: true,
+			  language: 'ja',
+			  control: {
+				      shufflePieces: false,
+				      confirmShuffle: true,
+				      toggleOriginal: true,
+				      toggleNumbers: true,
+				      counter: true,
+				      timer: true,
+				      pauseTimer: true
+				    },
+			  success: {
+				      fadeOriginal: false,
+				      callback: function( results ){
+					            alert( '移動回数: ' + results.moves + '回, かかった時間: ' + results.seconds + '秒' );
+					            postScore( results );
+					          },
+				      callbackTimeout: 1000
+				    },
+			  animation: {
+				      shuffleRounds: 3,
+				      shuffleSpeed: 800,
+				      slidingSpeed: 200,
+				      fadeOriginalSpeed: 600
+				    },
+			  style: {
+				      gridSize: 2,
+				      overlap: true,
+				      backgroundOpacity: 0.1
+				    }
+		};
+var slide_texts = {
+	  shuffleLabel: 'シャッフル',
+	  toggleOriginalLabel: '元画像',
+	  toggleNumbersLabel: '数値表示／非表示',
+	  confirmShuffleMessage: 'シャッフルしてよろしいですか？',
+	  movesLabel: '回',
+	  secondsLabel: '秒'
+};
+	</script>
+	</body>
+</html>
